@@ -1,0 +1,24 @@
+#
+# $ docker-compose -p aem up -d
+#
+
+version: '3'
+
+services:
+  author:
+    build: .
+    command: '-r author -p 4502'
+    ports:
+      - "4502:4502"
+    restart: unless-stopped
+    volumes:
+      - ./license.properties:/opt/aem/license.properties:ro
+
+  publish:
+    build: .
+    command: '-r publish -p 4503'
+    ports:
+      - "4503:4503"
+    restart: unless-stopped
+    volumes:
+      - ./license.properties:/opt/aem/license.properties:ro

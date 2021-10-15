@@ -1,0 +1,63 @@
+---
+ - hosts: localhost
+   connection: local
+   gather_facts: no
+   vars_files:
+     - exam_variable.yml
+   tasks:
+    - name: Create a new EC2 key
+      ec2_key: 
+       name: "{{ username }}" 
+       region: "{{ aws_region }}"
+      register: ec2_key_result
+
+    - name: Save private key
+      copy: 
+       content: "{{ ec2_key_result.key.private_key }}"
+       dest: ./{{ username }}.pem   
+       mode: 0400 
+      when: ec2_key_result.changed
+
+    - name: create aws security group {{ username }}
+      ec2_group:
+       name: "{{ username }}"
+       description: sg with rule descriptions
+       vpc_id: vpc-69c00514
+       rules:
+        - proto: tcp
+          ports: "{{ firewall_ports }}"
+          cidr_ip: 0.0.0.0/0
+          cidr_ipv6: ::/0
+          rule_desc: allow all on port
+
+    - name: create aws ec2 instance 
+      ec2:
+       key_name: "{{ username }}"
+       instance_type: t3a.micro
+       image: ami-0947d2ba12ee1ff75
+       wait: yes
+       group: "{{ username }}"
+       count: 1
+       instance_tags: 
+         Name: "{{ username }}"
+       region: "{{ aws_region }}"
+      register: ec2
+    - name: debug
+      debug:
+       msg: "{{ ec2 }}"
+
+    - name: associate new elastic IPs with each of the instances
+      ec2_eip:
+       device_id: "{{ item }}"
+       region: "{{ aws_region }}"
+      with_items: "{{ ec2.instance_ids }}"
+ 
+    - name: resize ebs
+      ec2_vol:
+       instance: "{{ item  }}"
+       region: "{{ aws_region }}"
+       volume_size: 9
+       volume_type: gp2
+       iops: 100
+      with_items: "{{ ec2.instance_ids }}"
+
