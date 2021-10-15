@@ -1,0 +1,64 @@
+Redis Quick Start
+https://redis.io/topics/quickstart
+
+Configuring Redis using a ConfigMap
+https://kubernetes.io/docs/tutorials/configuration/configure-redis-using-configmap/
+
+# cat example-redis-config.yml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: example-redis-config
+data:
+  redis-config: |
+    maxmemory 2mb
+    maxmemory-policy allkeys-lru    
+
+
+# cat redis-pod.aml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis
+spec:
+  containers:
+  - name: redis
+    image: redis:5.0.4
+    command:
+     - redis-server
+     - "/redis-master/redis.conf"
+    ports:
+    - containerPort: 6379
+    resources:
+      limits:
+        cpu: "0.1"
+    env:
+    - name: MASTER
+      value: "true"
+    volumeMounts:
+    - mountPath: /redis-master-data
+      name: redis-data
+    - mountPath: /redis-master
+      name: config
+  volumes:
+    - name: redis-data
+      emptyDir: {}
+    - name: config
+      configMap:
+        name: example-redis-config
+        items:
+        - key: redis-config
+          path: redis.conf
+
+# kubectl apply -f example-redis-config.yml
+# kubectl apply -f redis.yml
+# kubectl get/describe pod 
+# kubectl get/describe config 
+# kubectl exec -it redis -- bash 
+  redis-cli
+  127.0.0.1:6379> CONFIG GET maxmemory
+  127.0.0.1:6379> CONFIG GET maxmemory-policy
+  exit
+  echo $MASTER
+  
